@@ -141,8 +141,16 @@ else
     echo "✓ Src directory already exists: $SHARED_WS/src"
 fi
 
-# Install git-lfs
-curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
+# If git-lfs is not installed, Install git-lfs
+if ! command -v git-lfs &> /dev/null; then
+    echo ""
+    echo "Git LFS not found. Installing Git LFS..."
+    curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
+    echo "✓ Git LFS installed"
+else
+    echo ""
+    echo "✓ Git LFS is already installed"
+fi
 
 # Import data repos into data directory
 DATA_DIR="$SCRIPT_DIR/data"
@@ -166,6 +174,6 @@ echo "========================================="
 echo "Installation complete!"
 echo "========================================="
 echo ""
-echo "You can now launch MoveIt2 Docker from your application menu"
-echo "or by running: gtk-launch moveit2-docker"
+echo "You can now launch ROS2 Template Docker from your application menu"
+echo "or by running: gtk-launch ros2-docker-template"
 echo ""

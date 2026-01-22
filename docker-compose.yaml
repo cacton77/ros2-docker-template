@@ -1,5 +1,5 @@
 services:
-  template:
+  ros2-docker-template:
     image: template:humble
     build:
       context: .
