@@ -209,6 +209,7 @@ fi
 if ! command -v vcs &> /dev/null; then
     echo ""
     echo "vcstool not found. Installing vcstool..."
+    curl -s https://packagecloud.io/install/repositories/dirk-thomas/vcstool/script.deb.sh | sudo bash
     sudo apt update
     sudo apt install -y python3-vcstool
     echo "✓ vcstool installed"

@@ -9,6 +9,7 @@ services:
       dockerfile: docker/Dockerfile
       args:
         # BASE_IMAGE: osrf/ros:humble-desktop-full  # x86_64 only
+        # BASE_IMAGE: dustynv/ros:humble-ros-base-l4t-r36.3.0  # NVIDIA Jetson (ARM64)
         BASE_IMAGE: ros:humble  # Multi-architecture (ARM64/x86_64)
         ROS_DISTRO: humble
         USERNAME: ${USERNAME:-macs}
