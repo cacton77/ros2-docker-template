@@ -10,6 +10,41 @@ echo ""
 # Get the directory where this script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+# Parse command line arguments
+USE_GPU=""
+for arg in "$@"; do
+    case $arg in
+        --gpu)
+            USE_GPU="true"
+            shift
+            ;;
+        --no-gpu)
+            USE_GPU="false"
+            shift
+            ;;
+        *)
+            ;;
+    esac
+done
+
+# Auto-detect NVIDIA GPU if not specified
+if [ -z "$USE_GPU" ]; then
+    echo "Detecting NVIDIA GPU..."
+    if command -v nvidia-smi &> /dev/null && nvidia-smi &> /dev/null; then
+        USE_GPU="true"
+        echo "✓ NVIDIA GPU detected"
+    else
+        USE_GPU="false"
+        echo "✓ No NVIDIA GPU detected (or driver not installed)"
+    fi
+else
+    if [ "$USE_GPU" = "true" ]; then
+        echo "GPU support enabled via --gpu flag"
+    else
+        echo "GPU support disabled via --no-gpu flag"
+    fi
+fi
+
 # Change to the container directory
 echo "Changing to directory: $SCRIPT_DIR"
 cd "$SCRIPT_DIR" || exit 1
@@ -17,7 +52,11 @@ cd "$SCRIPT_DIR" || exit 1
 # Build the Docker image
 echo ""
 echo "Building Docker image with docker compose..."
-docker compose build
+if [ "$USE_GPU" = "true" ]; then
+    docker compose -f docker-compose.yaml -f docker-compose.nvidia.yaml build
+else
+    docker compose build
+fi
 
 if [ $? -eq 0 ]; then
     echo "✓ Docker image built successfully"
@@ -35,16 +74,30 @@ if [ -d "$APPS_DIR" ]; then
 fi
 mkdir -p "$APPS_DIR"
 
-# Copy .env file
+# Update USE_GPU in local .env file
 ENV_FILE=".env"
 if [ -f "$SCRIPT_DIR/$ENV_FILE" ]; then
+    if grep -q "^USE_GPU=" "$SCRIPT_DIR/$ENV_FILE"; then
+        sed -i "s/^USE_GPU=.*/USE_GPU=$USE_GPU/" "$SCRIPT_DIR/$ENV_FILE"
+    else
+        echo "USE_GPU=$USE_GPU" >> "$SCRIPT_DIR/$ENV_FILE"
+    fi
+    # Copy .env file to apps directory
     echo "Copying .env file to $APPS_DIR..."
     cp "$SCRIPT_DIR/$ENV_FILE" "$APPS_DIR/"
-    echo "✓ .env file installed"
+    echo "✓ .env file installed (USE_GPU=$USE_GPU)"
 else
     echo "✗ .env file not found: $SCRIPT_DIR/$ENV_FILE"
     exit 1
 fi
+
+# Copy docker-compose files
+echo "Copying docker-compose files to $APPS_DIR..."
+cp "$SCRIPT_DIR/docker-compose.yaml" "$APPS_DIR/"
+if [ -f "$SCRIPT_DIR/docker-compose.nvidia.yaml" ]; then
+    cp "$SCRIPT_DIR/docker-compose.nvidia.yaml" "$APPS_DIR/"
+fi
+echo "✓ Docker compose files installed"
 
 # Copy main script
 MAIN_SCRIPT="launch_container.sh"
@@ -139,6 +192,18 @@ if [ ! -d "$SHARED_WS/src" ]; then
     echo "✓ Dependencies imported"
 else
     echo "✓ Src directory already exists: $SHARED_WS/src"
+fi
+
+# Install vcstool if not installed
+if ! command -v vcs &> /dev/null; then
+    echo ""
+    echo "vcstool not found. Installing vcstool..."
+    sudo apt update
+    sudo apt install -y python3-vcstool
+    echo "✓ vcstool installed"
+else
+    echo ""
+    echo "✓ vcstool is already installed"
 fi
 
 # If git-lfs is not installed, Install git-lfs

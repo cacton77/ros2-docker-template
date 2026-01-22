@@ -1,11 +1,14 @@
 services:
   ros2-docker-template:
     image: template:humble
+    # platform: linux/arm64  # Uncomment for ARM64 (e.g., Raspberry Pi)
+    # platform: linux/amd64  # Uncomment for x86_64
     build:
       context: .
       dockerfile: docker/Dockerfile
       args:
-        BASE_IMAGE: osrf/ros:humble-desktop-full
+        # BASE_IMAGE: osrf/ros:humble-desktop-full  # x86_64 only
+        BASE_IMAGE: ros:humble  # Multi-architecture (ARM64/x86_64)
         ROS_DISTRO: humble
         USERNAME: ${USERNAME:-macs}
         UID: ${UID:-1000}
@@ -23,8 +26,6 @@ services:
       - XAUTHORITY=/tmp/.docker.xauth
       - XDG_RUNTIME_DIR=/tmp/runtime-${USERNAME:-macs}
       - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
-      - NVIDIA_VISIBLE_DEVICES=all
-      - NVIDIA_DRIVER_CAPABILITIES=all
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - /tmp/.docker.xauth:/tmp/.docker.xauth:rw
@@ -35,15 +36,6 @@ services:
       - /tmp/runtime-${USERNAME:-macs}:/tmp/runtime-${USERNAME:-macs}:rw
     device_cgroup_rules:
       - 'c *:* rmw'
-    # runtime: nvidia  # Add this!
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all  # Changed from 1 to all
-              capabilities: [gpu, utility, compute, graphics]  # Added graphics!
-    # REMOVE the devices section with /dev/dri
     working_dir: /workspaces/shared_ws
     user: ${UID:-1000}:${UID:-1000}
     command: ["/bin/bash"]
