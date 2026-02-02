@@ -171,7 +171,7 @@ else
     exit 1
 fi
 
-# Make the main script executable
+# Make the main scripts executable
 MAIN_SCRIPT="launch_container.sh"
 if [ -f "$SCRIPT_DIR/$MAIN_SCRIPT" ]; then
     echo "Making main script executable..."
@@ -179,6 +179,17 @@ if [ -f "$SCRIPT_DIR/$MAIN_SCRIPT" ]; then
     echo "✓ Main script is executable"
 else
     echo "✗ Main script not found: $SCRIPT_DIR/$MAIN_SCRIPT"
+    exit 1
+fi
+
+# Make run.sh executable
+RUN_SCRIPT="run.sh"
+if [ -f "$SCRIPT_DIR/$RUN_SCRIPT" ]; then
+    echo "Making run script executable..."
+    chmod +x "$SCRIPT_DIR/$RUN_SCRIPT"
+    echo "✓ Run script is executable"
+else
+    echo "✗ Run script not found: $SCRIPT_DIR/$RUN_SCRIPT"
     exit 1
 fi
 
@@ -270,6 +281,53 @@ if ! grep -q "net.core.wmem_max=26214400" /etc/sysctl.conf; then
 fi
 sudo sysctl -p
 
+# Build shared_ws inside the container
+echo ""
+echo "Building shared_ws..."
+cd "$SCRIPT_DIR"
+./launch_container.sh colcon build 
+echo "✓ shared_ws built"
+
+# Set up systemd service for auto-start on boot
+echo ""
+echo "Setting up systemd service for auto-start..."
+SERVICE_NAME="inspection-eoat"
+SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
+
+# Create the systemd service file
+sudo tee "$SERVICE_FILE" > /dev/null << EOF
+[Unit]
+Description=Inspection EOAT ROS2 Docker Container
+After=docker.service network-online.target
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+User=$USER
+WorkingDirectory=$SCRIPT_DIR
+ExecStart=$SCRIPT_DIR/run.sh
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Reload systemd daemon and enable the service
+sudo systemctl daemon-reload
+sudo systemctl enable "$SERVICE_NAME.service"
+echo "✓ Systemd service '$SERVICE_NAME' created and enabled"
+
+# Restart the service to apply changes
+echo "Restarting service to apply changes..."
+sudo systemctl restart "$SERVICE_NAME.service"
+echo "✓ Service restarted"
+echo ""
+echo "  To check status: sudo systemctl status $SERVICE_NAME"
+echo "  To view logs: sudo journalctl -u $SERVICE_NAME -f"
+echo "  To disable auto-start: sudo systemctl disable $SERVICE_NAME"
+
 echo ""
 echo "========================================="
 echo "Installation complete!"
@@ -279,4 +337,5 @@ echo "Container name: $CONTAINER_NAME"
 echo "GPU support: $USE_GPU"
 echo ""
 echo "You can now launch the container by running: ./launch_container.sh"
+echo "The container will also auto-start on boot via systemd."
 echo ""
