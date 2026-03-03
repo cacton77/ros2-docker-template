@@ -77,7 +77,21 @@ repositories:
         version: main
 ```
 
-### 3. Configure `.env`
+### 3. Configure data repositories (optional)
+
+If your project requires large data assets stored in Git LFS, edit [data/data.repos](data/data.repos) to list the repositories to clone into `data/`:
+
+```yaml
+repositories:
+    MyDataset:
+        type: git
+        url: https://github.com/your-org/MyDataset
+        version: main
+```
+
+`install.sh` will clone each repository and run `git lfs pull` inside it. If you have no data repositories, leave `data/data.repos` empty.
+
+### 4. Configure `.env`
 
 | Variable | Default | Description |
 |---|---|---|
@@ -87,7 +101,7 @@ repositories:
 | `FIRMWARE_DIR` | *(empty)* | Path to Arduino sketch directory (relative or absolute); leave empty to skip firmware steps |
 | `RUN_CMD` | `echo "Hello World"` | Command run by `run.sh` inside the container |
 
-### 4. Install
+### 5. Install
 
 ```bash
 ./install.sh
