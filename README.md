@@ -53,10 +53,22 @@ ros2-docker-template/
 
 ---
 
+## What is Docker?
+
+Docker packages an application and all its dependencies into a **container** — a lightweight, isolated environment that runs the same way on any machine. For ROS2 development this means your workspace, system libraries, and middleware configuration are all captured in a single image, eliminating "works on my machine" problems and making it easy to share a reproducible setup with teammates or deploy to a robot.
+
+---
+
 ## Prerequisites
 
-- [Docker](https://docs.docker.com/engine/install/) with the Compose plugin
+**Linux:**
+- [Docker Engine](https://docs.docker.com/engine/install/) with the Compose plugin
 - [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) (if using GPU)
+
+**Windows (WSL2):**
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) with the **WSL 2 backend** enabled
+  - In Docker Desktop settings, go to **Resources → WSL Integration** and enable integration for your WSL distro
+  - GPU passthrough is handled by Docker Desktop — no separate NVIDIA Container Toolkit installation is required
 
 ---
 
