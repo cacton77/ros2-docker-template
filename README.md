@@ -10,6 +10,7 @@ The container is built on `osrf/ros:humble-desktop-full` and includes:
 
 - **ROS2 Humble** with a colcon workspace (`src/`) bind-mounted from the host
 - **CycloneDDS** as the ROS2 middleware
+- **Micro-ROS** agent built into the image (`base_ws`) for bridging microcontroller nodes over serial or UDP
 - **Arduino CLI** installed locally for RP2040 firmware compile and flash workflows
 - **Desktop shortcuts** for one-click bringup and development shells
 - **NVIDIA GPU** passthrough support (auto-detected or overridden via flags)
@@ -172,12 +173,34 @@ After running `install.sh`, two shortcuts appear on the desktop:
 
 | Path | Description |
 |---|---|
-| `/workspaces/base_ws` | Empty base workspace (built into the image layer) |
+| `/workspaces/base_ws` | Base workspace built into the image layer (contains `micro_ros_setup` and the Micro-ROS agent) |
 | `/workspaces/shared_ws` | Your ROS2 packages (bind-mounted from `./src`) |
 | `/data` | Data repositories (bind-mounted from `./data`) |
 | `/config` | Runtime config including CycloneDDS (bind-mounted from `./config`) |
 
 The entrypoint sources workspaces in order: ROS2 → `base_ws` → `shared_ws`.
+
+---
+
+## Micro-ROS
+
+The image includes [`micro_ros_setup`](https://github.com/micro-ROS/micro_ros_setup) and a pre-built Micro-ROS agent in `/workspaces/base_ws`. The agent bridges microcontroller nodes (running micro-ROS firmware) into the ROS2 graph over serial or UDP.
+
+**Start the agent over serial:**
+
+```bash
+source /workspaces/base_ws/install/setup.bash
+ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyUSB0
+```
+
+**Start the agent over UDP:**
+
+```bash
+source /workspaces/base_ws/install/setup.bash
+ros2 run micro_ros_agent micro_ros_agent udp4 --port 8888
+```
+
+The `dialout` group is automatically added to the container user, so serial ports are accessible without extra `chmod` steps.
 
 ---
 

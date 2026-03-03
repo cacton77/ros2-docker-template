@@ -26,15 +26,25 @@ RUN rosdep update
 RUN mkdir -p /workspaces/base_ws/src
 WORKDIR /workspaces/base_ws/src
 
+# Clone base repositories
+RUN git clone -b $ROS_DISTRO https://github.com/micro-ROS/micro_ros_setup.git src/micro_ros_setup
+RUN sudo apt-get update && rosdep update && rosdep install --from-paths src --ignore-src -y
+
 # Build the workspace without tests and with overrides
-# MAKEFLAGS='-j2' limits compiler parallelism to reduce RAM usage
-# --parallel-workers 1 builds only one package at a time
 WORKDIR /workspaces/base_ws
 RUN /bin/bash -c "source /opt/ros/${ROS_DISTRO}/setup.bash && \
-    MAKEFLAGS='-j2' colcon build \
+    colcon build \
     --executor sequential \
-    --parallel-workers 1 \
     --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF"
+
+# Create and build micro-ROS agent (separate steps for better error diagnosis)
+RUN /bin/bash -c "source /opt/ros/${ROS_DISTRO}/setup.bash && \
+    source install/setup.bash && \
+    ros2 run micro_ros_setup create_agent_ws.sh"
+
+RUN /bin/bash -c "source /opt/ros/${ROS_DISTRO}/setup.bash && \
+    source install/setup.bash && \
+    ros2 run micro_ros_setup build_agent.sh"
 
 COPY docker/requirements.txt /tmp/requirements.txt
 RUN python3 -m pip install -r /tmp/requirements.txt --force-reinstall && rm /tmp/requirements.txt
