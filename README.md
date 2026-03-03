@@ -1,6 +1,6 @@
-# Inspection Docker
+# ROS2 Docker Template
 
-A Docker-based deployment environment for the MACS Lab inspection cell. This repo sets up a standardized ROS2 Humble workspace with MoveIt2 (built from source), clones all inspection cell packages, and provides desktop shortcuts for one-click bringup and development workflows.
+A general-purpose Docker development template for ROS2 projects. Clone this repo, configure your packages, and get a consistent, reproducible ROS2 workspace with optional Arduino firmware support.
 
 ---
 
@@ -8,64 +8,47 @@ A Docker-based deployment environment for the MACS Lab inspection cell. This rep
 
 The container is built on `osrf/ros:humble-desktop-full` and includes:
 
-- **MoveIt2** built from source (baked into the image layer)
+- **ROS2 Humble** with a colcon workspace (`src/`) bind-mounted from the host
 - **CycloneDDS** as the ROS2 middleware
-- **Universal Robots** and **Intel RealSense** drivers
-- A **shared workspace** (`shared_ws/`) mounted from the host, containing all inspection cell packages
-- A **data directory** (`data/`) mounted from the host, containing viewpoint generation data via Git LFS
+- **Arduino CLI** installed locally for RP2040 firmware compile and flash workflows
+- **Desktop shortcuts** for one-click bringup and development shells
+- **NVIDIA GPU** passthrough support (auto-detected or overridden via flags)
 
 ---
 
 ## Repository Structure
 
 ```
-inspection-docker/
-├── .env                          # Container name, ROS domain ID, GPU flag
-├── install.sh                    # One-time setup script
+ros2-docker-template/
+├── .env                          # Container name, ROS domain ID, GPU flag, firmware/run settings
+├── install.sh                    # One-time setup and rebuild script
 ├── launch_container.sh           # Start or attach to the container
-├── run.sh                        # Start container in detached mode and run bringup
-├── bringup.desktop               # Desktop shortcut: Inspection Bringup
-├── devel.desktop                 # Desktop shortcut: Inspection Development
+├── run.sh                        # Run RUN_CMD (from .env) inside the container
 ├── docker-compose.yaml           # Main Docker Compose file
 ├── docker-compose.nvidia.yaml    # NVIDIA GPU overlay (merged when USE_GPU=true)
 ├── docker/
 │   ├── Dockerfile                # Image definition
 │   ├── entrypoint.sh             # Sources ROS2, base_ws, and shared_ws on shell startup
-│   ├── bringup_entrypoint.sh     # Builds shared_ws and launches bringup.launch.py
-│   ├── packages.txt              # APT packages installed into the base image
-│   ├── overlay_packages.txt      # APT packages for the overlay (UR, RealSense)
+│   ├── bringup_entrypoint.sh     # Entrypoint variant for bringup launches
+│   ├── packages.txt              # APT packages installed into the image
 │   └── requirements.txt          # Python pip packages
 ├── config/
 │   └── cyclonedds.xml            # CycloneDDS tuning (buffer sizes, multicast)
-├── shared_ws/
-│   ├── src.repos              # vcstool manifest for inspection cell packages
-│   └── src/                      # Cloned packages (created by install.sh)
-└── data/
-    ├── data.repos                # vcstool manifest for data repositories
-    └── ViewpointGenerationData/  # Git LFS data (cloned by install.sh)
+├── src/
+│   └── src.repos                 # vcstool manifest — add your ROS2 packages here
+├── data/
+│   └── data.repos                # vcstool manifest for large data repositories (Git LFS)
+├── desktop/
+│   ├── bringup.desktop           # Desktop shortcut: Bringup
+│   └── devel.desktop             # Desktop shortcut: Development shell
+├── assets/
+│   ├── bringup_icon.png
+│   └── devel_icon.png
+└── arduino/
+    ├── arduino-cli.yaml          # Arduino CLI config (self-contained, paths relative to arduino/)
+    ├── cores.txt                 # Board cores to install (one per line)
+    └── libraries.txt             # Libraries to install (one per line)
 ```
-
----
-
-## ROS2 Packages
-
-All packages are cloned into `shared_ws/src/` by `install.sh` using vcstool.
-
-| Package | Repository | Branch |
-|---|---|---|
-| [ViewpointGeneration](https://github.com/cacton77/ViewpointGeneration) | cacton77/ViewpointGeneration | `devel` |
-| [Inspection_Cell](https://github.com/DevanshB99/Inspection_Cell) | DevanshB99/Inspection_Cell | `main` |
-| [Inspection_Control](https://github.com/antara1005/Inspection_Control) | antara1005/Inspection_Control | `main` |
-| [Turntable_ROS2_Driver](https://github.com/DevanshB99/Turntable_ROS2_Driver) | DevanshB99/Turntable_ROS2_Driver | `ESP32` |
-| [http_image_publisher](https://github.com/cacton77/http_image_publisher) | cacton77/http_image_publisher | `main` |
-
-### Data Repositories
-
-Large data assets are stored in Git LFS and cloned into `data/`.
-
-| Repository | Branch |
-|---|---|
-| [ViewpointGenerationData](https://github.com/cacton77/ViewpointGenerationData) | `main` |
 
 ---
 
@@ -73,27 +56,55 @@ Large data assets are stored in Git LFS and cloned into `data/`.
 
 - [Docker](https://docs.docker.com/engine/install/) with the Compose plugin
 - [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) (if using GPU)
-- `terminator` terminal emulator (used by desktop shortcuts)
 
 ---
 
-## Installation & Building
+## Getting Started
 
-`install.sh` is the main script for both initial setup and rebuilding the workspace during development:
+### 1. Clone and rename
+
+Clone this template and rename the folder to your project name. The container name is automatically derived from the folder name (lowercased, spaces replaced with hyphens).
+
+### 2. Configure your ROS2 packages
+
+Edit [src/src.repos](src/src.repos) to list the repositories to clone into the workspace:
+
+```yaml
+repositories:
+    my_package:
+        type: git
+        url: https://github.com/your-org/my_package
+        version: main
+```
+
+### 3. Configure `.env`
+
+| Variable | Default | Description |
+|---|---|---|
+| `CONTAINER_NAME` | *(folder name)* | Docker container/image name (set automatically by `install.sh`) |
+| `ROS_DOMAIN_ID` | `0` | ROS2 domain ID |
+| `USE_GPU` | `true` | Enable NVIDIA GPU passthrough (set automatically by `install.sh`) |
+| `FIRMWARE_DIR` | *(empty)* | Path to Arduino sketch directory (relative or absolute); leave empty to skip firmware steps |
+| `RUN_CMD` | `echo "Hello World"` | Command run by `run.sh` inside the container |
+
+### 4. Install
 
 ```bash
 ./install.sh
 ```
 
 The script will:
-1. Auto-detect an NVIDIA GPU (override with `--gpu` or `--no-gpu`)
-2. Build (or rebuild) the Docker image
-3. Install `vcstool` and `git-lfs` if not present
-4. Clone all packages from `src.repos` into `shared_ws/src/` (skipped if `src/` already exists)
-5. Clone data repositories from `data.repos` and pull Git LFS objects
-6. Create desktop shortcuts (`bringup.desktop`, `devel.desktop`) on `~/Desktop`
-7. Increase kernel socket buffer limits for DDS performance
-8. Build `shared_ws` inside the container
+1. Install `vcstool` if not present
+2. Clone all packages from `src/src.repos` into `src/`
+3. Install `git-lfs` if not present and clone data repositories from `data/data.repos`
+4. Auto-detect an NVIDIA GPU (override with `--gpu` or `--no-gpu`)
+5. Build (or rebuild) the Docker image
+6. Copy app files and create desktop shortcuts (`bringup.desktop`, `devel.desktop`) on `~/Desktop`
+7. Install Arduino CLI locally into `arduino/bin/` if not already present
+8. Install board cores listed in `arduino/cores.txt` and libraries in `arduino/libraries.txt`
+9. If `FIRMWARE_DIR` is set: compile and flash the Arduino sketch to a connected RP2040
+10. Increase kernel socket buffer limits for DDS performance
+11. Build the ROS2 workspace inside the container
 
 ```bash
 # Force GPU support
@@ -103,7 +114,7 @@ The script will:
 ./install.sh --no-gpu
 ```
 
-Re-running `install.sh` during development will rebuild the Docker image (using cache) and rebuild `shared_ws`, making it the standard way to apply source changes.
+Re-running `install.sh` during development rebuilds the Docker image (using cache) and rebuilds the workspace.
 
 ---
 
@@ -124,40 +135,22 @@ If the container is already running, this attaches a new shell to it. Additional
 ./launch_container.sh ros2 topic list
 ```
 
-### Bringup
+### Run a Command
 
-Start the full inspection cell bringup (launches `viewpoint_generation bringup.launch.py`):
+`run.sh` reads `RUN_CMD` from `.env` and runs it inside the container:
 
 ```bash
 ./run.sh
 ```
 
-This starts the container in detached mode if needed, then attaches and runs the bringup launch file.
+Set `RUN_CMD` to your bringup launch, test script, or any other command.
 
 ### Desktop Shortcuts
 
 After running `install.sh`, two shortcuts appear on the desktop:
 
-- **Inspection Bringup** — opens a terminal and runs the bringup launch file
-- **Inspection Development** — opens an interactive development shell
-
----
-
-## Configuration
-
-### `.env`
-
-Key environment variables read by `launch_container.sh` and Docker Compose:
-
-| Variable | Default | Description |
-|---|---|---|
-| `CONTAINER_NAME` | `inspection-docker` | Docker container/image name |
-| `ROS_DOMAIN_ID` | `2` | ROS2 domain ID |
-| `USE_GPU` | `true` | Enable NVIDIA GPU passthrough |
-
-### CycloneDDS
-
-`config/cyclonedds.xml` is mounted into the container at `/config/cyclonedds.xml` and configures CycloneDDS with tuned socket buffer sizes (10 MB send/receive) for high-bandwidth image topics.
+- **Bringup** — launches `RUN_CMD` in a terminal
+- **Development** — opens an interactive development shell
 
 ---
 
@@ -165,32 +158,60 @@ Key environment variables read by `launch_container.sh` and Docker Compose:
 
 | Path | Description |
 |---|---|
-| `/workspaces/base_ws` | MoveIt2 built from source (image layer, read-only at runtime) |
-| `/workspaces/shared_ws` | Inspection cell packages (bind-mounted from `./shared_ws`) |
-| `/data` | Viewpoint generation data (bind-mounted from `./data`) |
-| `/config` | CycloneDDS and other runtime config (bind-mounted from `./config`) |
+| `/workspaces/base_ws` | Empty base workspace (built into the image layer) |
+| `/workspaces/shared_ws` | Your ROS2 packages (bind-mounted from `./src`) |
+| `/data` | Data repositories (bind-mounted from `./data`) |
+| `/config` | Runtime config including CycloneDDS (bind-mounted from `./config`) |
 
 The entrypoint sources workspaces in order: ROS2 → `base_ws` → `shared_ws`.
 
 ---
 
+## Arduino Firmware Support
+
+Arduino CLI is installed locally into `arduino/bin/` (not added to the system PATH). All Arduino data, downloads, and user libraries are stored under `arduino/` to keep the project self-contained.
+
+**Configuring cores and libraries:**
+
+Add board cores to [arduino/cores.txt](arduino/cores.txt) (one per line):
+```
+rp2040:rp2040
+```
+
+Add libraries to [arduino/libraries.txt](arduino/libraries.txt) (one per line):
+```
+Adafruit NeoPixel
+```
+
+**Compiling and flashing firmware:**
+
+Set `FIRMWARE_DIR` in `.env` to the path of your Arduino sketch (the folder containing the `.ino` file). Re-run `install.sh` to compile and flash. The script will:
+
+1. Compile the sketch for the `rp2040:rp2040:adafruit_qtpy` board
+2. Auto-detect a connected RP2040 (via serial port or RPI-RP2 bootloader drive)
+3. Reset the board into bootloader mode if needed and copy the `.uf2` firmware
+
+---
+
+## CycloneDDS
+
+[config/cyclonedds.xml](config/cyclonedds.xml) is mounted into the container at `/config/cyclonedds.xml` and configures CycloneDDS with tuned socket buffer sizes (25 MB send/receive) for high-bandwidth topics.
+
+---
+
 ## Updating Packages
 
-To pull the latest changes for all packages in `shared_ws`:
+Pull the latest changes for all packages in `src/`:
 
 ```bash
-cd shared_ws/src
+cd src
 vcs pull
 ```
 
-Then re-run `install.sh` to rebuild the workspace:
-
-```bash
-./install.sh
-```
-
-Or rebuild directly inside the container without going through the full install:
+Then rebuild the workspace:
 
 ```bash
 ./launch_container.sh colcon build
 ```
+
+Or re-run `install.sh` for a full rebuild including the Docker image.
