@@ -1,0 +1,4 @@
+# Arduino board cores to install
+# Format: <vendor>:<architecture>
+# rp2040:rp2040
+# esp32:esp32

@@ -1,0 +1,4 @@
+# Arduino libraries to install
+# Format: one library name per line (as shown in Arduino Library Manager)
+# TMCStepper
+# Adafruit NeoPixel

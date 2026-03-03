@@ -1,6 +1,10 @@
 shared_ws/*
-!shared_ws/shared.repos
+!shared_ws/src.repos
 data/*
 !data/data.repos
 .claude/
 .vscode/
+arduino/*
+!arduino/arduino-cli.yaml
+!arduino/cores.txt
+!arduino/libraries.txt
